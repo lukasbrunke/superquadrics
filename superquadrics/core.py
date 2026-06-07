@@ -278,8 +278,9 @@ class Superquadric:
                 v1 = i * resolution + (j + 1)
                 v2 = (i + 1) * resolution + j
                 v3 = (i + 1) * resolution + (j + 1)
-                triangles.append([v0, v1, v2])
-                triangles.append([v1, v3, v2])
+                # Wind so face normals point outward (right-hand rule).
+                triangles.append([v0, v2, v1])
+                triangles.append([v1, v2, v3])
 
         return np.asarray(vertices, dtype=float), np.asarray(triangles, dtype=np.int64)
 
