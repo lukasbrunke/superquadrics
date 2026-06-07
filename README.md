@@ -41,6 +41,6 @@ pip install -e ".[examples]"
 python examples/visualize.py --opacity 0.5 --out examples/images
 ```
 
-|  | PyVista | Open3D |
-|---|---|---|
-| **Transparent** (opacity ramps up left→right) | ![](examples/images/transparent_pyvista.png) | ![](examples/images/transparent_open3d.png) |
+| PyVista | Open3D |
+|---|---|
+|![](examples/images/transparent_pyvista.png) | ![](examples/images/transparent_open3d.png) |
