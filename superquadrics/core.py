@@ -6,6 +6,8 @@ Convention: a superquadric is described by ``center`` (world position), ``scales
 Euler 'xyz' angles, or [x, y, z, w] quaternion).
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.spatial.transform import Rotation
 from scipy import interpolate
@@ -31,8 +33,46 @@ def _clamp_off_axis(t):
     return t
 
 
+@dataclass(eq=False)
+class SuperquadricShape:
+    """Pose-free shape parameters of a superquadric.
+
+    Attributes:
+        scales: [a, b, c] scale parameters.
+        exponents: [e1, e2] shape parameters.
+    """
+
+    scales: np.ndarray
+    exponents: np.ndarray
+
+    def __post_init__(self):
+        self.scales = np.asarray(self.scales, dtype=float)
+        self.exponents = np.asarray(self.exponents, dtype=float)
+
+
+def _to_rotation_matrix(rotation):
+    """Coerce a rotation given as a 3x3 matrix, Euler 'xyz' angles, or [x,y,z,w]
+    quaternion into a 3x3 rotation matrix. ``None`` yields the identity."""
+    if rotation is None:
+        return np.eye(3)
+    if isinstance(rotation, (list, np.ndarray)):
+        rotation = np.array(rotation, dtype=float)
+        if rotation.shape == (3, 3):
+            return rotation
+        if rotation.shape == (3,):
+            return Rotation.from_euler("xyz", rotation).as_matrix()
+        if rotation.shape == (4,):
+            return Rotation.from_quat(rotation).as_matrix()
+    raise ValueError("Invalid rotation format")
+
+
 class Superquadric:
-    """A superquadric with arbitrary position and orientation."""
+    """A superquadric with arbitrary position and orientation.
+
+    The shape parameters are held in a :class:`SuperquadricShape` (``self.shape``);
+    ``scales`` and ``exponents`` are read-only views onto it. The pose (``center``
+    plus ``rotation``) is exposed as the :attr:`pose` property, which is settable.
+    """
 
     def __init__(self, center, scales, exponents, rotation=None):
         """
@@ -43,24 +83,19 @@ class Superquadric:
             rotation: one of a 3x3 matrix, Euler 'xyz' angles (len 3),
                 or an [x, y, z, w] quaternion (len 4). Defaults to identity.
         """
+        self.shape = SuperquadricShape(scales, exponents)
         self.center = np.array(center, dtype=float)
-        self.scales = np.array(scales, dtype=float)
-        self.exponents = np.array(exponents, dtype=float)
+        self.rotation = _to_rotation_matrix(rotation)
 
-        if rotation is None:
-            self.rotation = np.eye(3)
-        elif isinstance(rotation, (list, np.ndarray)):
-            rotation = np.array(rotation, dtype=float)
-            if rotation.shape == (3, 3):
-                self.rotation = rotation
-            elif rotation.shape == (3,):
-                self.rotation = Rotation.from_euler("xyz", rotation).as_matrix()
-            elif rotation.shape == (4,):
-                self.rotation = Rotation.from_quat(rotation).as_matrix()
-            else:
-                raise ValueError("Invalid rotation format")
-        else:
-            raise ValueError("Invalid rotation format")
+    @property
+    def scales(self):
+        """[a, b, c] scale parameters (read-only view of ``self.shape``)."""
+        return self.shape.scales
+
+    @property
+    def exponents(self):
+        """[e1, e2] shape parameters (read-only view of ``self.shape``)."""
+        return self.shape.exponents
 
     @property
     def pose(self):
@@ -69,6 +104,15 @@ class Superquadric:
         T[:3, :3] = self.rotation
         T[:3, 3] = self.center
         return T
+
+    @pose.setter
+    def pose(self, transform):
+        """Update center and rotation from a 4x4 homogeneous transform."""
+        transform = np.asarray(transform, dtype=float)
+        if transform.shape != (4, 4):
+            raise ValueError("pose must be a 4x4 homogeneous transform")
+        self.rotation = transform[:3, :3].copy()
+        self.center = transform[:3, 3].copy()
 
     @property
     def pose_inverse(self):

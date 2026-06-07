@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from superquadrics.core import sign_pow, Superquadric
+from superquadrics.core import sign_pow, Superquadric, SuperquadricShape
 
 
 def test_sign_pow_matches_signed_power():
@@ -65,6 +65,42 @@ def test_transform_roundtrip_single_point():
     # transform_point_to_world expects a (3, N) column-stacked array
     back = sq.transform_point_to_world(p_local.reshape(3, 1)).ravel()
     np.testing.assert_allclose(back, p_world, atol=1e-12)
+
+
+def test_shape_is_dataclass_backing_scales_and_exponents():
+    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [0.6, 0.9])
+    assert isinstance(sq.shape, SuperquadricShape)
+    np.testing.assert_allclose(sq.shape.scales, [1.0, 1.5, 0.8])
+    np.testing.assert_allclose(sq.shape.exponents, [0.6, 0.9])
+    # scales/exponents are read-only views onto the shape
+    np.testing.assert_allclose(sq.scales, sq.shape.scales)
+    np.testing.assert_allclose(sq.exponents, sq.shape.exponents)
+    with pytest.raises(AttributeError):
+        sq.scales = [2.0, 2.0, 2.0]
+
+
+def test_shape_dataclass_coerces_to_float_arrays():
+    shape = SuperquadricShape([1, 2, 3], [1, 1])
+    assert shape.scales.dtype == float
+    assert shape.exponents.dtype == float
+
+
+def test_pose_setter_updates_center_and_rotation():
+    sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
+    rot = Rotation.from_euler("xyz", [0.1, 0.2, 0.3]).as_matrix()
+    T = np.eye(4)
+    T[:3, :3] = rot
+    T[:3, 3] = [1.0, 2.0, 3.0]
+    sq.pose = T
+    np.testing.assert_allclose(sq.rotation, rot, atol=1e-12)
+    np.testing.assert_allclose(sq.center, [1.0, 2.0, 3.0], atol=1e-12)
+    np.testing.assert_allclose(sq.pose, T, atol=1e-12)
+
+
+def test_pose_setter_rejects_non_4x4():
+    sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
+    with pytest.raises(ValueError):
+        sq.pose = np.eye(3)
 
 
 def test_pose_property_and_inverse():
@@ -223,6 +259,7 @@ def test_public_api_exports():
 
     expected = {
         "Superquadric",
+        "SuperquadricShape",
         "sign_pow",
         "plot_quadric_open3d",
         "plot_quadric_pyvista",
