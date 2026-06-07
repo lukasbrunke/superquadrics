@@ -59,3 +59,45 @@ def generate_superquadric_mesh(a1, a2, a3, e1, e2, resolution=10):
             triangles.append([v1, v3, v2])
 
     return vertices, triangles
+
+
+class Superquadric:
+    """A superquadric with arbitrary position and orientation."""
+
+    def __init__(self, center, scales, exponents, rotation=None):
+        """
+        Args:
+            center: [x, y, z] world coordinates of the centre.
+            scales: [a, b, c] scale parameters.
+            exponents: [e1, e2] shape parameters.
+            rotation: one of a 3x3 matrix, Euler 'xyz' angles (len 3),
+                or an [x, y, z, w] quaternion (len 4). Defaults to identity.
+        """
+        self.center = np.array(center, dtype=float)
+        self.scales = np.array(scales, dtype=float)
+        self.exponents = np.array(exponents, dtype=float)
+
+        if rotation is None:
+            self.rotation = np.eye(3)
+        elif isinstance(rotation, (list, np.ndarray)):
+            rotation = np.array(rotation, dtype=float)
+            if rotation.shape == (3, 3):
+                self.rotation = rotation
+            elif rotation.shape == (3,):
+                self.rotation = Rotation.from_euler("xyz", rotation).as_matrix()
+            elif rotation.shape == (4,):
+                self.rotation = Rotation.from_quat(rotation).as_matrix()
+            else:
+                raise ValueError("Invalid rotation format")
+        else:
+            raise ValueError("Invalid rotation format")
+
+    def transform_point_to_local(self, point):
+        """World -> local. Accepts a single (3,) point or a (3, N) array."""
+        point = np.asarray(point)
+        return np.dot(self.rotation.T, (point.T - self.center).T) \
+            if point.ndim == 2 else np.dot(self.rotation.T, point - self.center)
+
+    def transform_point_to_world(self, point):
+        """Local -> world. Expects a (3, N) column-stacked array of points."""
+        return np.dot(self.rotation, point) + np.reshape(self.center, (-1, 1))
