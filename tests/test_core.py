@@ -137,16 +137,24 @@ def test_gradient_matches_finite_differences():
     np.testing.assert_allclose(analytic, numeric, rtol=1e-4, atol=1e-5)
 
 
-def test_gradient_raises_at_axis_aligned_point():
-    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [0.6, 0.9])
-    with pytest.raises(ValueError):
-        sq.grad_inside_outside_wrt_point(np.array([1.0, 0.0, 0.0]))  # y=z=0 (x-axis)
+def test_gradient_finite_at_axis_aligned_point():
+    # exponents <= 2: the gradient at an axis plane is finite (removable singularity).
+    # Ellipsoid (e=1) at a point with y=0 has the exact gradient 2 P (p - c).
+    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [1.0, 1.0])
+    p = np.array([1.0, 0.0, 0.5])  # y = 0 exactly
+    g = sq.grad_inside_outside_wrt_point(p)
+    assert np.all(np.isfinite(g))
+    expected = 2.0 * _ellipsoid_PD(sq) @ (p - sq.center)
+    np.testing.assert_allclose(g, expected, atol=1e-6)
 
 
-def test_hessian_raises_at_axis_aligned_point():
-    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [0.6, 0.9])
-    with pytest.raises(ValueError):
-        sq.hessian_inside_outside_wrt_point(np.array([0.0, 0.0, 0.8]))  # x=y=0 (z-axis)
+def test_hessian_finite_at_axis_aligned_point():
+    # Ellipsoid Hessian is the constant 2 P everywhere, including axis planes.
+    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [1.0, 1.0])
+    p = np.array([1.0, 0.0, 0.5])  # y = 0 exactly
+    H = sq.hessian_inside_outside_wrt_point(p)
+    assert np.all(np.isfinite(H))
+    np.testing.assert_allclose(H, 2.0 * _ellipsoid_PD(sq), atol=1e-6)
 
 
 def test_gradient_equals_ellipsoid_when_exponents_one():

@@ -11,15 +11,24 @@ from scipy.spatial.transform import Rotation
 from scipy import interpolate
 
 
-# Below this magnitude a local coordinate is treated as "on an axis plane", where
-# the gradient/Hessian of the inside-outside function are singular for general
-# exponents (the analytic formulas divide by the normalized coordinate).
-_AXIS_EPS = 1e-12
+# Relative (dimensionless) clamp applied to the *normalized* local coordinates
+# x/a, y/b, z/c in the gradient/Hessian. At axis-aligned points those formulas
+# divide by the normalized coordinate; clamping it off the axis plane keeps the
+# result finite (a removable singularity for exponents <= 2). Because the clamp
+# acts on the normalized coordinate it is automatically scale-aware in a, b, c.
+_AXIS_EPS = 1e-9
 
 
 def sign_pow(x, a):
     """Compute sign(x) * |x|**a (the signed power used by superquadric surfaces)."""
     return np.sign(x) * (np.abs(x) ** a)
+
+
+def _clamp_off_axis(t):
+    """Sign-preserving clamp of a normalized coordinate away from 0 by ``_AXIS_EPS``."""
+    if abs(t) < _AXIS_EPS:
+        return _AXIS_EPS if t >= 0 else -_AXIS_EPS
+    return t
 
 
 class Superquadric:
@@ -210,30 +219,24 @@ class Superquadric:
         world = self.transform_point_to_world(vertices.T).T
         return world, triangles
 
-    @staticmethod
-    def _require_off_axis(local_point):
-        """Raise if any local coordinate is ~0, where grad/Hessian are singular."""
-        if np.any(np.abs(local_point) < _AXIS_EPS):
-            raise ValueError(
-                "gradient/Hessian of the inside-outside function is undefined at "
-                "axis-aligned points (a local coordinate is ~0); evaluate at a point "
-                "with all nonzero local coordinates")
-
     def grad_inside_outside_wrt_point(self, point):
         """Gradient of the inside-outside function w.r.t. the world point.
 
-        Raises ``ValueError`` at axis-aligned points (a local coordinate is ~0),
-        where the analytic gradient is singular for general exponents.
+        At axis-aligned points the normalized coordinates are clamped off the axis
+        plane by ``_AXIS_EPS`` so the result stays finite (the singularity is
+        removable for exponents <= 2; for exponents > 2 it is genuine and the
+        clamped value is a large finite regularization).
         """
         local_point = self.transform_point_to_local(point)
-        self._require_off_axis(local_point)
         e1, e2 = self.exponents
         a, b, c = self.scales
         x, y, z = local_point
 
-        xs = x / a
-        ys = y / b
-        zs = z / c
+        # Clamp the normalized coordinates off the axis planes so the result stays
+        # finite at axis-aligned points (see _clamp_off_axis / _AXIS_EPS).
+        xs = _clamp_off_axis(x / a)
+        ys = _clamp_off_axis(y / b)
+        zs = _clamp_off_axis(z / c)
 
         f2D = (xs ** 2) ** (1 / e2) + (ys ** 2) ** (1 / e2)
         df2D_dx = 2 / e2 * (1 / a) * (xs ** 2) ** (1 / e2) / xs
@@ -248,18 +251,19 @@ class Superquadric:
     def hessian_inside_outside_wrt_point(self, point):
         """Hessian of the inside-outside function w.r.t. the world point.
 
-        Raises ``ValueError`` at axis-aligned points (a local coordinate is ~0),
-        same singularity as the gradient.
+        Axis-aligned points are clamped off the axis plane by ``_AXIS_EPS`` to keep
+        the result finite, same regularization as the gradient.
         """
         local_point = self.transform_point_to_local(point)
-        self._require_off_axis(local_point)
         e1, e2 = self.exponents
         a, b, c = self.scales
         x, y, z = local_point
 
-        xs = x / a
-        ys = y / b
-        zs = z / c
+        # Clamp the normalized coordinates off the axis planes so the result stays
+        # finite at axis-aligned points (see _clamp_off_axis / _AXIS_EPS).
+        xs = _clamp_off_axis(x / a)
+        ys = _clamp_off_axis(y / b)
+        zs = _clamp_off_axis(z / c)
 
         f2D = (xs ** 2) ** (1 / e2) + (ys ** 2) ** (1 / e2)
         df2D_dx = 2 / e2 * (1 / a) * (xs ** 2) ** (1 / e2) / xs
