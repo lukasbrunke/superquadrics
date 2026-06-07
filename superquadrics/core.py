@@ -194,3 +194,28 @@ class Superquadric:
         y = world_points[1].reshape(n_v, n_u)
         z = world_points[2].reshape(n_v, n_u)
         return x, y, z
+
+    def grad_inside_outside_wrt_point(self, point):
+        """Gradient of the inside-outside function w.r.t. the world point.
+
+        Note: undefined where a local coordinate is exactly zero (axis-aligned
+        points) because of division by the normalized coordinate.
+        """
+        local_point = self.transform_point_to_local(point)
+        e1, e2 = self.exponents
+        a, b, c = self.scales
+        x, y, z = local_point
+
+        xs = x / a
+        ys = y / b
+        zs = z / c
+
+        f2D = (xs ** 2) ** (1 / e2) + (ys ** 2) ** (1 / e2)
+        df2D_dx = 2 / e2 * (1 / a) * (xs ** 2) ** (1 / e2) / xs
+        df2D_dy = 2 / e2 * (1 / b) * (ys ** 2) ** (1 / e2) / ys
+
+        dfdx = (e2 / e1) * f2D ** (e2 / e1 - 1) * df2D_dx
+        dfdy = (e2 / e1) * f2D ** (e2 / e1 - 1) * df2D_dy
+        dfdz = (2 / e1) * (1 / c) * (zs ** 2) ** (1 / e1) / zs
+
+        return np.array(self.rotation @ np.array([dfdx, dfdy, dfdz]))
