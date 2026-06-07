@@ -84,7 +84,7 @@ def main():
     fig.supylabel(r"$\epsilon_1$", fontsize=18, x=0.02)    # further left
 
     path = os.path.join(args.out, "shape_chart.png")
-    fig.savefig(path, dpi=130)
+    fig.savefig(path, dpi=90)
     print("shape chart ->", path)
 
 
