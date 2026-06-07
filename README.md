@@ -32,9 +32,14 @@ superquadric_plotter(sq, plotter="open3d", opacity=0.5)  # transparency (both ba
 
 ## Examples
 
-`examples/visualize.py` renders a row of superquadrics with both backends:
+`examples/visualize.py` renders a row of superquadrics (one per shape family,
+driven by the `exponents`) with both backends:
 
 ```bash
 pip install -e ".[examples]"
-python examples/visualize.py --opacity 0.5 --out /tmp
+python examples/visualize.py --opacity 0.5 --out examples/images
 ```
+
+|  | PyVista | Open3D |
+|---|---|---|
+| **Transparent** (opacity ramps up left→right) | ![](examples/images/transparent_pyvista.png) | ![](examples/images/transparent_open3d.png) |
