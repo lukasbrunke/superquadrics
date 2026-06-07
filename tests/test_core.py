@@ -163,6 +163,16 @@ def test_hessian_equals_ellipsoid_when_exponents_one():
 
 def test_public_api_exports():
     import superquadrics
-    assert hasattr(superquadrics, "Superquadric")
-    assert hasattr(superquadrics, "generate_superquadric_mesh")
-    assert hasattr(superquadrics, "superquadric_plotter")
+
+    expected = {
+        "Superquadric",
+        "sign_pow",
+        "generate_superquadric_mesh",
+        "superquadric_to_mesh",
+        "plot_quadric_open3d",
+        "plot_quadric_pyvista",
+        "superquadric_plotter",
+    }
+    assert set(superquadrics.__all__) == expected
+    for name in expected:
+        assert hasattr(superquadrics, name)
