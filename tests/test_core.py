@@ -13,9 +13,8 @@ def test_sign_pow_matches_signed_power():
 
 def test_generate_mesh_shapes():
     resolution = 6
-    vertices, triangles = Superquadric.generate_mesh(1.0, 2.0, 3.0, 1.0, 1.0, resolution=resolution)
-    vertices = np.asarray(vertices)
-    triangles = np.asarray(triangles)
+    sq = Superquadric([0, 0, 0], [1.0, 2.0, 3.0], [1.0, 1.0])
+    vertices, triangles = sq.generate_mesh(resolution=resolution)
     assert vertices.shape == (resolution * resolution, 3)
     assert triangles.shape == (2 * (resolution - 1) ** 2, 3)
     # all triangle indices are valid vertex indices
@@ -24,9 +23,10 @@ def test_generate_mesh_shapes():
 
 
 def test_generate_mesh_unit_sphere_radius():
-    # a=e=1 is a unit sphere: every surface vertex must have norm 1.
-    vertices, _ = Superquadric.generate_mesh(1.0, 1.0, 1.0, 1.0, 1.0, resolution=12)
-    radii = np.linalg.norm(np.asarray(vertices), axis=1)
+    # a=e=1 is a unit sphere: every local-frame vertex must have norm 1.
+    sq = Superquadric([0, 0, 0], [1.0, 1.0, 1.0], [1.0, 1.0])
+    vertices, _ = sq.generate_mesh(resolution=12)
+    radii = np.linalg.norm(vertices, axis=1)
     np.testing.assert_allclose(radii, 1.0, atol=1e-9)
 
 

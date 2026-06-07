@@ -150,29 +150,21 @@ class Superquadric:
         z = world_points[2].reshape(n_v, n_u)
         return x, y, z
 
-    @staticmethod
-    def generate_mesh(a1, a2, a3, e1, e2, resolution=10):
-        """Triangle mesh of a canonical (origin-centred, axis-aligned) superquadric.
+    def generate_mesh(self, resolution=20):
+        """Triangle mesh of this superquadric in its local (body) frame.
 
-        This is the stateless shape generator (no pose). For the world-frame mesh
-        of a specific superquadric instance use :meth:`to_mesh`.
-
-        Parameters
-        ----------
-        a1, a2, a3 : float
-            Scale parameters along x, y, z.
-        e1, e2 : float
-            Shape exponents (north-south, east-west).
-        resolution : int
-            Number of samples along each parameter.
+        For the world-frame mesh use :meth:`to_mesh`.
 
         Returns
         -------
-        vertices : list[list[float]]
-            ``resolution**2`` points in local coordinates.
-        triangles : list[list[int]]
-            ``2 * (resolution - 1)**2`` triangles as vertex-index triples.
+        vertices : np.ndarray
+            ``(resolution**2, 3)`` local-frame vertices.
+        triangles : np.ndarray
+            ``(2 * (resolution - 1)**2, 3)`` vertex-index triples.
         """
+        a1, a2, a3 = self.scales
+        e1, e2 = self.exponents
+
         eta = np.linspace(-np.pi / 2, np.pi / 2, resolution)
         omega = np.linspace(-np.pi, np.pi, resolution)
         eta, omega = np.meshgrid(eta, omega)
@@ -196,7 +188,7 @@ class Superquadric:
                 triangles.append([v0, v1, v2])
                 triangles.append([v1, v3, v2])
 
-        return vertices, triangles
+        return np.asarray(vertices, dtype=float), np.asarray(triangles, dtype=np.int64)
 
     def to_mesh(self, resolution=20):
         """Triangle mesh of this superquadric in world coordinates.
@@ -204,15 +196,11 @@ class Superquadric:
         Returns
         -------
         vertices : np.ndarray
-            ``(N, 3)`` array of world-frame vertices.
+            ``(resolution**2, 3)`` array of world-frame vertices.
         triangles : np.ndarray
-            ``(M, 3)`` array of vertex-index triples.
+            ``(2 * (resolution - 1)**2, 3)`` array of vertex-index triples.
         """
-        vertices, triangles = self.generate_mesh(
-            self.scales[0], self.scales[1], self.scales[2],
-            self.exponents[0], self.exponents[1], resolution=resolution)
-        vertices = np.asarray(vertices, dtype=float)
-        triangles = np.asarray(triangles, dtype=np.int64)
+        vertices, triangles = self.generate_mesh(resolution=resolution)
         world = self.transform_point_to_world(vertices.T).T
         return world, triangles
 
