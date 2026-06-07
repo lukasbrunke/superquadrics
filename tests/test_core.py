@@ -85,6 +85,37 @@ def test_shape_dataclass_coerces_to_float_arrays():
     assert shape.exponents.dtype == float
 
 
+def test_shape_rejects_nonpositive_scales():
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, 0.0, 1.0], [1.0, 1.0])
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, -1.0, 1.0], [1.0, 1.0])
+
+
+def test_shape_rejects_nonpositive_exponents():
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, 1.0, 1.0], [1.0, 0.0])
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, 1.0, 1.0], [-0.5, 1.0])
+
+
+def test_shape_rejects_wrong_lengths():
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, 1.0], [1.0, 1.0])      # scales must be length 3
+    with pytest.raises(ValueError):
+        SuperquadricShape([1.0, 1.0, 1.0], [1.0])      # exponents must be length 2
+
+
+def test_shape_warns_for_exponent_above_two():
+    with pytest.warns(UserWarning):
+        SuperquadricShape([1.0, 1.0, 1.0], [2.5, 1.0])
+
+
+def test_shape_no_warning_at_exponent_two(recwarn):
+    SuperquadricShape([1.0, 1.0, 1.0], [2.0, 2.0])     # boundary: e == 2 is allowed, no warning
+    assert len(recwarn) == 0
+
+
 def test_pose_setter_updates_center_and_rotation():
     sq = Superquadric(SuperquadricShape([1, 1, 1], [1, 1]), center=[0, 0, 0])
     rot = Rotation.from_euler("xyz", [0.1, 0.2, 0.3]).as_matrix()

@@ -6,6 +6,7 @@ Convention: a superquadric is described by ``center`` (world position), ``scales
 Euler 'xyz' angles, or [x, y, z, w] quaternion).
 """
 
+import warnings
 from dataclasses import dataclass
 
 import numpy as np
@@ -48,6 +49,19 @@ class SuperquadricShape:
     def __post_init__(self):
         self.scales = np.asarray(self.scales, dtype=float)
         self.exponents = np.asarray(self.exponents, dtype=float)
+        if self.scales.shape != (3,):
+            raise ValueError("scales must have length 3 ([a, b, c])")
+        if self.exponents.shape != (2,):
+            raise ValueError("exponents must have length 2 ([e1, e2])")
+        if np.any(self.scales <= 0):
+            raise ValueError("scales must be positive")
+        if np.any(self.exponents <= 0):
+            raise ValueError("exponents must be positive")
+        if np.any(self.exponents > 2):
+            warnings.warn(
+                "superquadric exponents > 2 give non-convex shapes; the inside-outside "
+                "gradient/Hessian are singular at axis-aligned points (regularized)",
+                stacklevel=2)
 
 
 def _to_rotation_matrix(rotation):
