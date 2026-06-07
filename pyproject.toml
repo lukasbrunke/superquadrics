@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "superquadrics"
+version = "0.1.0"
+description = "Superquadric geometry and Open3D/PyVista visualization"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy", "scipy"]
+
+[project.optional-dependencies]
+viz = ["open3d", "pyvista"]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["superquadrics"]
