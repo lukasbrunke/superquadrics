@@ -59,3 +59,19 @@ def test_transform_to_world_rejects_single_vector():
     sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
     with pytest.raises(ValueError):
         sq.transform_point_to_world(np.array([1.0, 2.0, 3.0]))  # (3,) not allowed; use reshape(3,1)
+
+
+def test_inside_outside_classifies_centre_and_far_point():
+    sq = Superquadric([0, 0, 0], [1, 2, 3], [0.7, 0.9], rotation=None)
+    assert sq.inside_outside_function(np.array([0.0, 0.0, 0.0])) < 1.0   # centre is inside
+    assert sq.inside_outside_function(np.array([10.0, 10.0, 10.0])) > 1.0  # far is outside
+
+
+def test_surface_points_lie_on_surface():
+    sq = Superquadric([0.5, -1.0, 2.0], [1.0, 1.5, 0.8], [0.6, 0.9],
+                      rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())
+    x, y, z = sq.get_surface_points(n_points=25)
+    # sample several interior grid points (avoid poles/seams at the borders)
+    for (i, j) in [(7, 7), (12, 5), (5, 18), (18, 12)]:
+        p = np.array([x[i, j], y[i, j], z[i, j]])
+        assert sq.inside_outside_function(p) == pytest.approx(1.0, abs=1e-6)

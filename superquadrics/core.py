@@ -110,3 +110,80 @@ class Superquadric:
         if point.ndim != 2 or point.shape[0] != 3:
             raise ValueError("point must be a (3, N) array; for a single point use point.reshape(3, 1)")
         return np.dot(self.rotation, point) + self.center.reshape(-1, 1)
+
+    def inside_outside_function(self, point):
+        """Inside-outside value F. F < 1 inside, F = 1 on surface, F > 1 outside."""
+        local_point = self.transform_point_to_local(point)
+        normalized = local_point / self.scales
+        e1, e2 = self.exponents
+        x, y, z = normalized
+        term1 = (abs(x) ** (2 / e2) + abs(y) ** (2 / e2)) ** (e2 / e1)
+        term2 = abs(z) ** (2 / e1)
+        return term1 + term2
+
+    def get_surface_points(self, n_points=20, scaling=None, n_v=None, n_u=None, mode="simple"):
+        """Return (x, y, z) grids of world-frame surface points.
+
+        mode='simple' uses uniform angle sampling; mode='uniform' reparameterizes
+        by arc length for more even spacing. ``scaling`` inflates the surface
+        (used for the HOCBF scaled-superquadric construction).
+        """
+        e1, e2 = self.exponents
+        a1, a2, a3 = self.scales
+        if n_v is None:
+            n_v = n_points
+        if n_u is None:
+            n_u = n_points
+
+        if mode == "simple":
+            u = np.linspace(-np.pi / 2, np.pi / 2, n_u)
+            v = np.linspace(-np.pi, np.pi, n_v)
+            u, v = np.meshgrid(u, v)
+            x = a1 * sign_pow(np.cos(u), e1) * sign_pow(np.cos(v), e2)
+            y = a2 * sign_pow(np.cos(u), e1) * sign_pow(np.sin(v), e2)
+            z = a3 * sign_pow(np.sin(u), e1)
+        elif mode == "uniform":
+            u_fine = np.linspace(-np.pi / 2, np.pi / 2, 1000)
+            v_fine = np.linspace(-np.pi, np.pi, 1000)
+
+            # v sampling at u = 0 (xy-plane)
+            x_v = a1 * sign_pow(np.cos(v_fine), e2)
+            y_v = a2 * sign_pow(np.sin(v_fine), e2)
+            z_v = np.zeros_like(v_fine)
+            dv = np.sqrt(np.diff(x_v) ** 2 + np.diff(y_v) ** 2 + np.diff(z_v) ** 2)
+            v_arclen = np.insert(np.cumsum(dv), 0, 0.0)
+            v_arclen /= v_arclen[-1]
+            v_vals = interpolate.interp1d(
+                v_arclen, v_fine, kind="linear", bounds_error=False,
+                fill_value=(v_fine[0], v_fine[-1]))(np.linspace(0, 1, n_v))
+
+            # u sampling at v = 0 (xz-plane)
+            x_u = a1 * sign_pow(np.cos(u_fine), e1)
+            y_u = a2 * sign_pow(np.cos(u_fine), e1) * sign_pow(np.sin(0.0), e2)
+            z_u = a3 * sign_pow(np.sin(u_fine), e1)
+            du = np.sqrt(np.diff(x_u) ** 2 + np.diff(y_u) ** 2 + np.diff(z_u) ** 2)
+            u_arclen = np.insert(np.cumsum(du), 0, 0.0)
+            u_arclen /= u_arclen[-1]
+            u_vals = interpolate.interp1d(
+                u_arclen, u_fine, kind="linear", bounds_error=False,
+                fill_value=(u_fine[0], u_fine[-1]))(np.linspace(0, 1, n_u))
+
+            u, v = np.meshgrid(u_vals, v_vals)
+            x = a1 * sign_pow(np.cos(u), e1) * sign_pow(np.cos(v), e2)
+            y = a2 * sign_pow(np.cos(u), e1) * sign_pow(np.sin(v), e2)
+            z = a3 * sign_pow(np.sin(u), e1)
+        else:
+            raise ValueError(f"Invalid mode: {mode!r}")
+
+        if scaling:
+            scaling_factor = scaling ** (e1 / 2.0)
+            x = x * scaling_factor
+            y = y * scaling_factor
+            z = z * scaling_factor
+
+        local_points = np.stack([x.flatten(), y.flatten(), z.flatten()])
+        world_points = self.transform_point_to_world(local_points)
+        x = world_points[0].reshape(n_v, n_u)
+        y = world_points[1].reshape(n_v, n_u)
+        z = world_points[2].reshape(n_v, n_u)
+        return x, y, z
