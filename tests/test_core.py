@@ -85,6 +85,21 @@ def test_shape_dataclass_coerces_to_float_arrays():
     assert shape.exponents.dtype == float
 
 
+def test_shape_arrays_are_read_only():
+    shape = SuperquadricShape([1.0, 2.0, 3.0], [1.0, 1.0])
+    with pytest.raises(ValueError):
+        shape.scales[0] = 5.0
+    with pytest.raises(ValueError):
+        shape.exponents[0] = 5.0
+
+
+def test_shape_copies_caller_arrays():
+    scales = np.array([1.0, 2.0, 3.0])
+    SuperquadricShape(scales, [1.0, 1.0])
+    scales[0] = 9.0   # constructing a shape must not freeze the caller's array
+    assert scales[0] == 9.0
+
+
 def test_shape_rejects_nonpositive_scales():
     with pytest.raises(ValueError):
         SuperquadricShape([1.0, 0.0, 1.0], [1.0, 1.0])

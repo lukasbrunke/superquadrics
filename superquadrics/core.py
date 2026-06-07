@@ -47,8 +47,10 @@ class SuperquadricShape:
     exponents: np.ndarray
 
     def __post_init__(self):
-        self.scales = np.asarray(self.scales, dtype=float)
-        self.exponents = np.asarray(self.exponents, dtype=float)
+        # Copy (don't alias the caller's array) and make read-only so the shape
+        # is effectively immutable, matching the read-only views on Superquadric.
+        self.scales = np.array(self.scales, dtype=float)
+        self.exponents = np.array(self.exponents, dtype=float)
         if self.scales.shape != (3,):
             raise ValueError("scales must have length 3 ([a, b, c])")
         if self.exponents.shape != (2,):
@@ -62,6 +64,8 @@ class SuperquadricShape:
                 "superquadric exponents > 2 give non-convex shapes; the inside-outside "
                 "gradient/Hessian are singular at axis-aligned points (regularized)",
                 stacklevel=2)
+        self.scales.flags.writeable = False
+        self.exponents.flags.writeable = False
 
 
 def _to_rotation_matrix(rotation):
@@ -139,7 +143,10 @@ class Superquadric:
         return T
 
     def transform_point_to_local(self, point):
-        """World -> local. Accepts a single (3,) point or a (3, N) array."""
+        """World -> local. Accepts a single (3,) point or a (3, N) array; the
+        output mirrors the input shape. (Unlike :meth:`transform_point_to_world`,
+        which is (3, N)-only, a single point need not be reshaped here.)
+        """
         point = np.asarray(point)
         if point.shape[0] != 3:
             raise ValueError("point must have length 3 along its first axis")
@@ -180,8 +187,7 @@ class Superquadric:
         [-pi, pi]; both default to ``n_points``. mode='simple' uses uniform angle
         sampling; mode='uniform' reparameterizes by arc length for more even
         spacing, using ``n_fine`` samples for the arc-length integration.
-        ``scaling`` (if not None) inflates the surface by ``scaling ** (e1/2)``
-        (used for the HOCBF scaled-superquadric construction).
+        ``scaling`` (if not None) inflates the surface by ``scaling ** (e1/2)``.
         """
         e1, e2 = self.exponents
         a1, a2, a3 = self.scales
