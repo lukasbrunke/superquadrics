@@ -62,6 +62,22 @@ class Superquadric:
         else:
             raise ValueError("Invalid rotation format")
 
+    @property
+    def pose(self):
+        """4x4 homogeneous transform mapping the local (body) frame to the world."""
+        T = np.eye(4)
+        T[:3, :3] = self.rotation
+        T[:3, 3] = self.center
+        return T
+
+    @property
+    def pose_inverse(self):
+        """4x4 homogeneous transform mapping the world frame to the local frame."""
+        T = np.eye(4)
+        T[:3, :3] = self.rotation.T
+        T[:3, 3] = -self.rotation.T @ self.center
+        return T
+
     def transform_point_to_local(self, point):
         """World -> local. Accepts a single (3,) point or a (3, N) array."""
         point = np.asarray(point)

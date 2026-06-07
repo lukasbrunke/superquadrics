@@ -67,6 +67,22 @@ def test_transform_roundtrip_single_point():
     np.testing.assert_allclose(back, p_world, atol=1e-12)
 
 
+def test_pose_property_and_inverse():
+    rot = Rotation.from_euler("xyz", [0.3, -0.5, 1.1]).as_matrix()
+    sq = Superquadric([1.0, 2.0, 3.0], [1, 1, 1], [1, 1], rotation=rot)
+    T = sq.pose
+    assert T.shape == (4, 4)
+    np.testing.assert_allclose(T[:3, :3], rot, atol=1e-12)
+    np.testing.assert_allclose(T[:3, 3], [1.0, 2.0, 3.0], atol=1e-12)
+    np.testing.assert_allclose(T[3], [0, 0, 0, 1], atol=1e-12)
+    # pose_inverse undoes pose
+    np.testing.assert_allclose(sq.pose @ sq.pose_inverse, np.eye(4), atol=1e-12)
+    # pose_inverse matches transform_point_to_local on a sample point
+    p = np.array([0.4, -0.2, 0.9])
+    local_via_pose = (sq.pose_inverse @ np.append(p, 1.0))[:3]
+    np.testing.assert_allclose(local_via_pose, sq.transform_point_to_local(p), atol=1e-12)
+
+
 def test_transform_to_world_rejects_single_vector():
     sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
     with pytest.raises(ValueError):
