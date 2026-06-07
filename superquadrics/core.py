@@ -95,9 +95,18 @@ class Superquadric:
     def transform_point_to_local(self, point):
         """World -> local. Accepts a single (3,) point or a (3, N) array."""
         point = np.asarray(point)
-        return np.dot(self.rotation.T, (point.T - self.center).T) \
-            if point.ndim == 2 else np.dot(self.rotation.T, point - self.center)
+        if point.shape[0] != 3:
+            raise ValueError("point must have length 3 along its first axis")
+        if point.ndim == 2:
+            return np.dot(self.rotation.T, (point.T - self.center).T)
+        return np.dot(self.rotation.T, point - self.center)
 
     def transform_point_to_world(self, point):
-        """Local -> world. Expects a (3, N) column-stacked array of points."""
-        return np.dot(self.rotation, point) + np.reshape(self.center, (-1, 1))
+        """Local -> world. Expects a (3, N) column-stacked array of points.
+
+        For a single point, pass it as ``point.reshape(3, 1)``.
+        """
+        point = np.asarray(point)
+        if point.ndim != 2 or point.shape[0] != 3:
+            raise ValueError("point must be a (3, N) array; for a single point use point.reshape(3, 1)")
+        return np.dot(self.rotation, point) + self.center.reshape(-1, 1)

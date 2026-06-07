@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
+from scipy.spatial.transform import Rotation
 
-from superquadrics.core import sign_pow, generate_superquadric_mesh
+from superquadrics.core import sign_pow, generate_superquadric_mesh, Superquadric
 
 
 def test_sign_pow_matches_signed_power():
@@ -29,10 +30,6 @@ def test_generate_superquadric_mesh_unit_sphere_radius():
     np.testing.assert_allclose(radii, 1.0, atol=1e-9)
 
 
-from superquadrics.core import Superquadric
-from scipy.spatial.transform import Rotation
-
-
 def test_init_accepts_three_rotation_formats():
     eye = np.eye(3)
     sq_mat = Superquadric([0, 0, 0], [1, 1, 1], [1, 1], rotation=eye)
@@ -56,3 +53,9 @@ def test_transform_roundtrip_single_point():
     # transform_point_to_world expects a (3, N) column-stacked array
     back = sq.transform_point_to_world(p_local.reshape(3, 1)).ravel()
     np.testing.assert_allclose(back, p_world, atol=1e-12)
+
+
+def test_transform_to_world_rejects_single_vector():
+    sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
+    with pytest.raises(ValueError):
+        sq.transform_point_to_world(np.array([1.0, 2.0, 3.0]))  # (3,) not allowed; use reshape(3,1)
