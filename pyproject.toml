@@ -23,7 +23,7 @@ dependencies = ["numpy", "scipy"]
 open3d = ["open3d"]
 pyvista = ["pyvista"]
 viz = ["open3d", "pyvista"]
-examples = ["open3d", "pyvista", "pillow"]
+examples = ["open3d", "pyvista", "pillow", "matplotlib"]
 dev = ["pytest", "pillow"]
 
 [tool.hatch.build.targets.wheel]

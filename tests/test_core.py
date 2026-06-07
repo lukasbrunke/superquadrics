@@ -210,6 +210,25 @@ def test_get_surface_points_rejects_bad_mode():
         sq.get_surface_points(mode="bogus")
 
 
+def test_small_exponents_close_poles_and_seam():
+    # Regression: small exponents previously opened holes at the poles/seam,
+    # because float ~1e-16 trig values do not vanish under a small power.
+    for e in (0.5, 0.1, 0.01):
+        sq = Superquadric(SuperquadricShape([1, 1, 1], [e, e]))
+
+        # Mesh poles must collapse onto the z-axis (xy radius ~ 0).
+        V, _ = sq.generate_mesh(resolution=40)
+        zmax = np.abs(V[:, 2]).max()
+        poles = V[np.abs(np.abs(V[:, 2]) - zmax) < 1e-9]
+        assert np.linalg.norm(poles[:, :2], axis=1).max() < 1e-9
+
+        # Surface seam (omega = -pi and +pi) must coincide.
+        x, y, z = sq.get_surface_points(n_points=40)
+        np.testing.assert_allclose(
+            np.stack([x[0], y[0], z[0]]),
+            np.stack([x[-1], y[-1], z[-1]]), atol=1e-9)
+
+
 def _fd_gradient(func, p, eps=1e-6):
     g = np.zeros(3)
     for i in range(3):

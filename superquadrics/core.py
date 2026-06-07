@@ -27,6 +27,40 @@ def sign_pow(x, a):
     return np.sign(x) * (np.abs(x) ** a)
 
 
+# Trig values below this magnitude are snapped to exactly 0 before the power.
+_TRIG_SNAP = 1e-9
+
+
+def _snap_zero(values):
+    """Snap near-zero values to exactly 0.
+
+    The spherical-product parametrization evaluates cos/sin at the poles
+    (eta = +-pi/2) and the seam (omega = +-pi), where they are mathematically 0
+    but float error leaves ~1e-16. For small exponents ``|1e-16|**e`` is NOT
+    small (e.g. ``1e-16 ** 0.01 ~= 0.7``), so the pole ring and seam fail to
+    close and the mesh develops holes. Snapping to 0 keeps those vertices
+    coincident for any exponent.
+    """
+    values = np.asarray(values, dtype=float)
+    return np.where(np.abs(values) < _TRIG_SNAP, 0.0, values)
+
+
+def _surface_xyz(scales, exponents, eta, omega):
+    """Superquadric surface coordinates for parameter arrays ``eta`` (in
+    [-pi/2, pi/2]) and ``omega`` (in [-pi, pi]), with pole/seam-safe snapping.
+    Returns (x, y, z) arrays shaped like the inputs."""
+    a1, a2, a3 = scales
+    e1, e2 = exponents
+    cos_eta = _snap_zero(np.cos(eta))
+    sin_eta = _snap_zero(np.sin(eta))
+    cos_omega = _snap_zero(np.cos(omega))
+    sin_omega = _snap_zero(np.sin(omega))
+    x = a1 * sign_pow(cos_eta, e1) * sign_pow(cos_omega, e2)
+    y = a2 * sign_pow(cos_eta, e1) * sign_pow(sin_omega, e2)
+    z = a3 * sign_pow(sin_eta, e1)
+    return x, y, z
+
+
 def _clamp_off_axis(t):
     """Sign-preserving clamp of a normalized coordinate away from 0 by ``_AXIS_EPS``."""
     if abs(t) < _AXIS_EPS:
@@ -200,9 +234,7 @@ class Superquadric:
             u = np.linspace(-np.pi / 2, np.pi / 2, n_u)
             v = np.linspace(-np.pi, np.pi, n_v)
             u, v = np.meshgrid(u, v)
-            x = a1 * sign_pow(np.cos(u), e1) * sign_pow(np.cos(v), e2)
-            y = a2 * sign_pow(np.cos(u), e1) * sign_pow(np.sin(v), e2)
-            z = a3 * sign_pow(np.sin(u), e1)
+            x, y, z = _surface_xyz(self.scales, self.exponents, u, v)
         elif mode == "uniform":
             u_fine = np.linspace(-np.pi / 2, np.pi / 2, n_fine)
             v_fine = np.linspace(-np.pi, np.pi, n_fine)
@@ -230,9 +262,7 @@ class Superquadric:
                 fill_value=(u_fine[0], u_fine[-1]))(np.linspace(0, 1, n_u))
 
             u, v = np.meshgrid(u_vals, v_vals)
-            x = a1 * sign_pow(np.cos(u), e1) * sign_pow(np.cos(v), e2)
-            y = a2 * sign_pow(np.cos(u), e1) * sign_pow(np.sin(v), e2)
-            z = a3 * sign_pow(np.sin(u), e1)
+            x, y, z = _surface_xyz(self.scales, self.exponents, u, v)
         else:
             raise ValueError(f"Invalid mode: {mode!r}")
 
@@ -261,16 +291,11 @@ class Superquadric:
         triangles : np.ndarray
             ``(2 * (resolution - 1)**2, 3)`` vertex-index triples.
         """
-        a1, a2, a3 = self.scales
-        e1, e2 = self.exponents
-
         eta = np.linspace(-np.pi / 2, np.pi / 2, resolution)
         omega = np.linspace(-np.pi, np.pi, resolution)
         eta, omega = np.meshgrid(eta, omega)
 
-        x = a1 * sign_pow(np.cos(eta), e1) * sign_pow(np.cos(omega), e2)
-        y = a2 * sign_pow(np.cos(eta), e1) * sign_pow(np.sin(omega), e2)
-        z = a3 * sign_pow(np.sin(eta), e1)
+        x, y, z = _surface_xyz(self.scales, self.exponents, eta, omega)
 
         vertices = []
         for i in range(resolution):
