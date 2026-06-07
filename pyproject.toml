@@ -11,8 +11,13 @@ requires-python = ">=3.9"
 dependencies = ["numpy", "scipy"]
 
 [project.optional-dependencies]
+# Pick the backend you want; both are lazily imported, so installing just one
+# is enough to use that plotter. ``viz`` is a convenience for both.
+open3d = ["open3d"]
+pyvista = ["pyvista"]
 viz = ["open3d", "pyvista"]
-dev = ["pytest"]
+examples = ["open3d", "pyvista", "pillow"]
+dev = ["pytest", "pillow"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["superquadrics"]

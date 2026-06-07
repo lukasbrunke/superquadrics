@@ -4,9 +4,13 @@ Superquadric geometry and Open3D / PyVista visualization.
 
 ## Install
 
+Pick the plotting backend you want:
+
 ```bash
-pip install -e ".[viz]"     # with plotting backends
-pip install -e .            # geometry only (numpy + scipy)
+pip install -e ".[pyvista]"   # PyVista backend (supports transparency)
+pip install -e ".[open3d]"    # Open3D backend (supports transparency)
+pip install -e ".[viz]"       # both backends
+pip install -e .              # geometry only (numpy + scipy)
 ```
 
 ## Usage
@@ -22,10 +26,15 @@ print(sq.inside_outside_function(np.array([0.5, 0.0, 0.0])))  # <1 inside, >1 ou
 g = sq.grad_inside_outside_wrt_point(np.array([0.7, -0.9, 1.3]))
 H = sq.hessian_inside_outside_wrt_point(np.array([0.7, -0.9, 1.3]))
 
-superquadric_plotter(sq, plotter="pyvista")   # or plotter="open3d"
+superquadric_plotter(sq, plotter="pyvista")              # or plotter="open3d"
+superquadric_plotter(sq, plotter="open3d", opacity=0.5)  # transparency (both backends)
 ```
 
-## Scope
+## Examples
 
-This package is geometry + plotting only. Distance/scaling, CBF safety filters,
-robot kinematics, and ROS integration live in separate repositories.
+`examples/visualize.py` renders a row of superquadrics with both backends:
+
+```bash
+pip install -e ".[examples]"
+python examples/visualize.py --opacity 0.5 --out /tmp
+```
