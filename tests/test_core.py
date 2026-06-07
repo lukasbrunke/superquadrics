@@ -137,6 +137,18 @@ def test_gradient_matches_finite_differences():
     np.testing.assert_allclose(analytic, numeric, rtol=1e-4, atol=1e-5)
 
 
+def test_gradient_raises_at_axis_aligned_point():
+    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [0.6, 0.9])
+    with pytest.raises(ValueError):
+        sq.grad_inside_outside_wrt_point(np.array([1.0, 0.0, 0.0]))  # y=z=0 (x-axis)
+
+
+def test_hessian_raises_at_axis_aligned_point():
+    sq = Superquadric([0, 0, 0], [1.0, 1.5, 0.8], [0.6, 0.9])
+    with pytest.raises(ValueError):
+        sq.hessian_inside_outside_wrt_point(np.array([0.0, 0.0, 0.8]))  # x=y=0 (z-axis)
+
+
 def test_gradient_equals_ellipsoid_when_exponents_one():
     sq = Superquadric([0.2, -0.4, 0.1], [1.0, 1.5, 0.8], [1.0, 1.0],
                       rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())

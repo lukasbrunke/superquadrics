@@ -11,6 +11,12 @@ from scipy.spatial.transform import Rotation
 from scipy import interpolate
 
 
+# Below this magnitude a local coordinate is treated as "on an axis plane", where
+# the gradient/Hessian of the inside-outside function are singular for general
+# exponents (the analytic formulas divide by the normalized coordinate).
+_AXIS_EPS = 1e-12
+
+
 def sign_pow(x, a):
     """Compute sign(x) * |x|**a (the signed power used by superquadric surfaces)."""
     return np.sign(x) * (np.abs(x) ** a)
@@ -204,13 +210,23 @@ class Superquadric:
         world = self.transform_point_to_world(vertices.T).T
         return world, triangles
 
+    @staticmethod
+    def _require_off_axis(local_point):
+        """Raise if any local coordinate is ~0, where grad/Hessian are singular."""
+        if np.any(np.abs(local_point) < _AXIS_EPS):
+            raise ValueError(
+                "gradient/Hessian of the inside-outside function is undefined at "
+                "axis-aligned points (a local coordinate is ~0); evaluate at a point "
+                "with all nonzero local coordinates")
+
     def grad_inside_outside_wrt_point(self, point):
         """Gradient of the inside-outside function w.r.t. the world point.
 
-        Note: undefined where a local coordinate is exactly zero (axis-aligned
-        points) because of division by the normalized coordinate.
+        Raises ``ValueError`` at axis-aligned points (a local coordinate is ~0),
+        where the analytic gradient is singular for general exponents.
         """
         local_point = self.transform_point_to_local(point)
+        self._require_off_axis(local_point)
         e1, e2 = self.exponents
         a, b, c = self.scales
         x, y, z = local_point
@@ -232,10 +248,11 @@ class Superquadric:
     def hessian_inside_outside_wrt_point(self, point):
         """Hessian of the inside-outside function w.r.t. the world point.
 
-        Note: undefined where a local coordinate is exactly zero (division by the
-        normalized coordinate), same limitation as the gradient.
+        Raises ``ValueError`` at axis-aligned points (a local coordinate is ~0),
+        same singularity as the gradient.
         """
         local_point = self.transform_point_to_local(point)
+        self._require_off_axis(local_point)
         e1, e2 = self.exponents
         a, b, c = self.scales
         x, y, z = local_point
