@@ -134,6 +134,15 @@ def test_gradient_equals_ellipsoid_when_exponents_one():
     np.testing.assert_allclose(sq.grad_inside_outside_wrt_point(p), expected, rtol=1e-6, atol=1e-9)
 
 
+def test_inside_outside_equals_ellipsoid_when_exponents_one():
+    sq = Superquadric([0.2, -0.4, 0.1], [1.0, 1.5, 0.8], [1.0, 1.0],
+                      rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())
+    p = np.array([0.7, -0.9, 1.3])
+    d = p - sq.center
+    expected = d @ _ellipsoid_PD(sq) @ d   # (p-c)^T P (p-c)
+    assert sq.inside_outside_function(p) == pytest.approx(expected, rel=1e-9, abs=1e-12)
+
+
 def _fd_hessian(grad_func, p, eps=1e-6):
     H = np.zeros((3, 3))
     for i in range(3):
