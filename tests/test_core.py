@@ -159,3 +159,10 @@ def test_hessian_equals_ellipsoid_when_exponents_one():
     p = np.array([0.7, -0.9, 1.3])
     expected = 2.0 * _ellipsoid_PD(sq)   # Hessian of (p-c)^T P (p-c) is 2P (constant)
     np.testing.assert_allclose(sq.hessian_inside_outside_wrt_point(p), expected, rtol=1e-6, atol=1e-9)
+
+
+def test_public_api_exports():
+    import superquadrics
+    assert hasattr(superquadrics, "Superquadric")
+    assert hasattr(superquadrics, "generate_superquadric_mesh")
+    assert hasattr(superquadrics, "superquadric_plotter")
