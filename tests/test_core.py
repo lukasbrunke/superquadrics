@@ -20,3 +20,10 @@ def test_generate_superquadric_mesh_shapes():
     # all triangle indices are valid vertex indices
     assert triangles.min() >= 0
     assert triangles.max() < vertices.shape[0]
+
+
+def test_generate_superquadric_mesh_unit_sphere_radius():
+    # a=e=1 is a unit sphere: every surface vertex must have norm 1.
+    vertices, _ = generate_superquadric_mesh(1.0, 1.0, 1.0, 1.0, 1.0, resolution=12)
+    radii = np.linalg.norm(np.asarray(vertices), axis=1)
+    np.testing.assert_allclose(radii, 1.0, atol=1e-9)
