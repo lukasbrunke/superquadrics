@@ -8,22 +8,7 @@ import warnings
 
 import numpy as np
 
-from .core import Superquadric, generate_superquadric_mesh
-
-
-def superquadric_to_mesh(sq: Superquadric, resolution: int = 20):
-    """Return (vertices_world, triangles) for ``sq`` as numpy arrays.
-
-    Builds the canonical local mesh via ``generate_superquadric_mesh`` and
-    transforms the vertices into world coordinates.
-    """
-    a1, a2, a3 = sq.scales
-    e1, e2 = sq.exponents
-    vertices, triangles = generate_superquadric_mesh(a1, a2, a3, e1, e2, resolution=resolution)
-    vertices = np.asarray(vertices, dtype=float)
-    triangles = np.asarray(triangles, dtype=np.int64)
-    world = sq.transform_point_to_world(vertices.T).T
-    return world, triangles
+from .core import Superquadric
 
 
 def plot_quadric_open3d(vertices, triangles, color=(1.0, 0.0, 0.0),
@@ -72,7 +57,7 @@ def plot_quadric_pyvista(vertices, triangles, color=(1.0, 0.0, 0.0),
 def superquadric_plotter(sq: Superquadric, plotter="pyvista", resolution=20,
                          color=(1.0, 0.0, 0.0), opacity=1.0, visualize=True):
     """Plot a Superquadric with the chosen backend ('open3d' or 'pyvista')."""
-    vertices, triangles = superquadric_to_mesh(sq, resolution=resolution)
+    vertices, triangles = sq.to_mesh(resolution=resolution)
     if plotter == "open3d":
         if opacity < 1.0:
             warnings.warn("Open3D mesh rendering does not support opacity; ignoring it.")

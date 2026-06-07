@@ -16,51 +16,6 @@ def sign_pow(x, a):
     return np.sign(x) * (np.abs(x) ** a)
 
 
-def generate_superquadric_mesh(a1, a2, a3, e1, e2, resolution=10):
-    """Generate a triangle mesh for a canonical (origin-centred, axis-aligned) superquadric.
-
-    Parameters
-    ----------
-    a1, a2, a3 : float
-        Scale parameters along x, y, z.
-    e1, e2 : float
-        Shape exponents (north-south, east-west).
-    resolution : int
-        Number of samples along each parameter.
-
-    Returns
-    -------
-    vertices : list[list[float]]
-        ``resolution**2`` points in local coordinates.
-    triangles : list[list[int]]
-        ``2 * (resolution - 1)**2`` triangles as vertex-index triples.
-    """
-    eta = np.linspace(-np.pi / 2, np.pi / 2, resolution)
-    omega = np.linspace(-np.pi, np.pi, resolution)
-    eta, omega = np.meshgrid(eta, omega)
-
-    x = a1 * sign_pow(np.cos(eta), e1) * sign_pow(np.cos(omega), e2)
-    y = a2 * sign_pow(np.cos(eta), e1) * sign_pow(np.sin(omega), e2)
-    z = a3 * sign_pow(np.sin(eta), e1)
-
-    vertices = []
-    for i in range(resolution):
-        for j in range(resolution):
-            vertices.append([x[i, j], y[i, j], z[i, j]])
-
-    triangles = []
-    for i in range(resolution - 1):
-        for j in range(resolution - 1):
-            v0 = i * resolution + j
-            v1 = i * resolution + (j + 1)
-            v2 = (i + 1) * resolution + j
-            v3 = (i + 1) * resolution + (j + 1)
-            triangles.append([v0, v1, v2])
-            triangles.append([v1, v3, v2])
-
-    return vertices, triangles
-
-
 class Superquadric:
     """A superquadric with arbitrary position and orientation."""
 
@@ -194,6 +149,72 @@ class Superquadric:
         y = world_points[1].reshape(n_v, n_u)
         z = world_points[2].reshape(n_v, n_u)
         return x, y, z
+
+    @staticmethod
+    def generate_mesh(a1, a2, a3, e1, e2, resolution=10):
+        """Triangle mesh of a canonical (origin-centred, axis-aligned) superquadric.
+
+        This is the stateless shape generator (no pose). For the world-frame mesh
+        of a specific superquadric instance use :meth:`to_mesh`.
+
+        Parameters
+        ----------
+        a1, a2, a3 : float
+            Scale parameters along x, y, z.
+        e1, e2 : float
+            Shape exponents (north-south, east-west).
+        resolution : int
+            Number of samples along each parameter.
+
+        Returns
+        -------
+        vertices : list[list[float]]
+            ``resolution**2`` points in local coordinates.
+        triangles : list[list[int]]
+            ``2 * (resolution - 1)**2`` triangles as vertex-index triples.
+        """
+        eta = np.linspace(-np.pi / 2, np.pi / 2, resolution)
+        omega = np.linspace(-np.pi, np.pi, resolution)
+        eta, omega = np.meshgrid(eta, omega)
+
+        x = a1 * sign_pow(np.cos(eta), e1) * sign_pow(np.cos(omega), e2)
+        y = a2 * sign_pow(np.cos(eta), e1) * sign_pow(np.sin(omega), e2)
+        z = a3 * sign_pow(np.sin(eta), e1)
+
+        vertices = []
+        for i in range(resolution):
+            for j in range(resolution):
+                vertices.append([x[i, j], y[i, j], z[i, j]])
+
+        triangles = []
+        for i in range(resolution - 1):
+            for j in range(resolution - 1):
+                v0 = i * resolution + j
+                v1 = i * resolution + (j + 1)
+                v2 = (i + 1) * resolution + j
+                v3 = (i + 1) * resolution + (j + 1)
+                triangles.append([v0, v1, v2])
+                triangles.append([v1, v3, v2])
+
+        return vertices, triangles
+
+    def to_mesh(self, resolution=20):
+        """Triangle mesh of this superquadric in world coordinates.
+
+        Returns
+        -------
+        vertices : np.ndarray
+            ``(N, 3)`` array of world-frame vertices.
+        triangles : np.ndarray
+            ``(M, 3)`` array of vertex-index triples.
+        """
+        vertices, triangles = self.generate_mesh(
+            self.scales[0], self.scales[1], self.scales[2],
+            self.exponents[0], self.exponents[1], resolution=resolution)
+        vertices = np.asarray(vertices, dtype=float)
+        triangles = np.asarray(triangles, dtype=np.int64)
+        world = self.transform_point_to_world(vertices.T).T
+        return world, triangles
 
     def grad_inside_outside_wrt_point(self, point):
         """Gradient of the inside-outside function w.r.t. the world point.
