@@ -172,14 +172,16 @@ class Superquadric:
         term2 = abs(z) ** (2 / e1)
         return term1 + term2
 
-    def get_surface_points(self, n_points=20, scaling=None, n_v=None, n_u=None, mode="simple"):
+    def get_surface_points(self, n_points=20, scaling=None, n_v=None, n_u=None,
+                           mode="simple", n_fine=1000):
         """Return (x, y, z) grids of world-frame surface points, each shaped (n_v, n_u).
 
         ``n_u`` samples the u parameter in [-pi/2, pi/2]; ``n_v`` samples v in
         [-pi, pi]; both default to ``n_points``. mode='simple' uses uniform angle
         sampling; mode='uniform' reparameterizes by arc length for more even
-        spacing. ``scaling`` (if not None) inflates the surface by
-        ``scaling ** (e1/2)`` (used for the HOCBF scaled-superquadric construction).
+        spacing, using ``n_fine`` samples for the arc-length integration.
+        ``scaling`` (if not None) inflates the surface by ``scaling ** (e1/2)``
+        (used for the HOCBF scaled-superquadric construction).
         """
         e1, e2 = self.exponents
         a1, a2, a3 = self.scales
@@ -196,8 +198,8 @@ class Superquadric:
             y = a2 * sign_pow(np.cos(u), e1) * sign_pow(np.sin(v), e2)
             z = a3 * sign_pow(np.sin(u), e1)
         elif mode == "uniform":
-            u_fine = np.linspace(-np.pi / 2, np.pi / 2, 1000)
-            v_fine = np.linspace(-np.pi, np.pi, 1000)
+            u_fine = np.linspace(-np.pi / 2, np.pi / 2, n_fine)
+            v_fine = np.linspace(-np.pi, np.pi, n_fine)
 
             # v sampling at u = 0 (xy-plane)
             x_v = a1 * sign_pow(np.cos(v_fine), e2)

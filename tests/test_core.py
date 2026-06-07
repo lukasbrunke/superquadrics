@@ -183,7 +183,7 @@ def test_inside_outside_batch_matches_single():
 
 def test_surface_points_uniform_mode_on_surface():
     sq = Superquadric(SuperquadricShape([1.0, 1.5, 0.8], [0.6, 0.9]), center=[0.0, 0.0, 0.0])
-    x, y, z = sq.get_surface_points(n_points=25, mode="uniform")
+    x, y, z = sq.get_surface_points(n_points=25, mode="uniform", n_fine=300)
     for (i, j) in [(7, 7), (12, 5), (5, 18), (18, 12)]:
         p = np.array([x[i, j], y[i, j], z[i, j]])
         assert sq.inside_outside_function(p) == pytest.approx(1.0, abs=1e-6)
