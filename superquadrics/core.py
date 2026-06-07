@@ -67,23 +67,25 @@ def _to_rotation_matrix(rotation):
 
 
 class Superquadric:
-    """A superquadric with arbitrary position and orientation.
+    """A superquadric: a :class:`SuperquadricShape` placed at a pose.
 
-    The shape parameters are held in a :class:`SuperquadricShape` (``self.shape``);
-    ``scales`` and ``exponents`` are read-only views onto it. The pose (``center``
-    plus ``rotation``) is exposed as the :attr:`pose` property, which is settable.
+    The defining shape parameters are supplied as a :class:`SuperquadricShape`
+    (``self.shape``); ``scales`` and ``exponents`` are read-only views onto it.
+    The pose (``center`` plus ``rotation``) is exposed as the settable
+    :attr:`pose` property.
     """
 
-    def __init__(self, center, scales, exponents, rotation=None):
+    def __init__(self, shape, center=(0.0, 0.0, 0.0), rotation=None):
         """
         Args:
-            center: [x, y, z] world coordinates of the centre.
-            scales: [a, b, c] scale parameters.
-            exponents: [e1, e2] shape parameters.
+            shape: a :class:`SuperquadricShape` (scales + exponents).
+            center: [x, y, z] world coordinates of the centre (default origin).
             rotation: one of a 3x3 matrix, Euler 'xyz' angles (len 3),
                 or an [x, y, z, w] quaternion (len 4). Defaults to identity.
         """
-        self.shape = SuperquadricShape(scales, exponents)
+        if not isinstance(shape, SuperquadricShape):
+            raise TypeError("shape must be a SuperquadricShape")
+        self.shape = shape
         self.center = np.array(center, dtype=float)
         self.rotation = _to_rotation_matrix(rotation)
 

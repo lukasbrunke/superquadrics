@@ -17,9 +17,10 @@ pip install -e .              # geometry only (numpy + scipy)
 
 ```python
 import numpy as np
-from superquadrics import Superquadric, superquadric_plotter
+from superquadrics import Superquadric, SuperquadricShape, superquadric_plotter
 
-sq = Superquadric(center=[0, 0, 0], scales=[1.0, 1.5, 0.8], exponents=[0.6, 0.9],
+shape = SuperquadricShape(scales=[1.0, 1.5, 0.8], exponents=[0.6, 0.9])
+sq = Superquadric(shape, center=[0, 0, 0],
                   rotation=[0.0, 0.0, 0.0])   # matrix, Euler 'xyz', or [x,y,z,w] quat
 
 print(sq.inside_outside_function(np.array([0.5, 0.0, 0.0])))  # <1 inside, >1 outside

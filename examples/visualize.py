@@ -2,8 +2,9 @@
 
 Interactive use is just::
 
-    from superquadrics import Superquadric, superquadric_plotter
-    sq = Superquadric([0, 0, 0], [1, 1.5, 0.8], [0.6, 0.9], rotation=[0.2, 0.4, -0.3])
+    from superquadrics import Superquadric, SuperquadricShape, superquadric_plotter
+    shape = SuperquadricShape(scales=[1, 1.5, 0.8], exponents=[0.6, 0.9])
+    sq = Superquadric(shape, center=[0, 0, 0], rotation=[0.2, 0.4, -0.3])
     superquadric_plotter(sq, plotter="pyvista", opacity=0.5)   # or plotter="open3d"
 
 This script additionally renders both backends off-screen to PNGs using a shared
@@ -26,7 +27,7 @@ import os
 import numpy as np
 from PIL import Image
 
-from superquadrics import Superquadric
+from superquadrics import Superquadric, SuperquadricShape
 from superquadrics.plotting import plot_quadric_open3d, plot_quadric_pyvista
 
 # (label, scales, exponents, color) — the exponents pick the shape family.
@@ -53,7 +54,8 @@ def build_scene():
     scene = []
     for i, (_, scales, exps, color) in enumerate(SHAPES):
         euler = [0.3 * i, 0.2 * i, 0.15 * i]
-        scene.append((Superquadric([i * SPACING, 0, 0], scales, exps, euler), color))
+        shape = SuperquadricShape(scales, exps)
+        scene.append((Superquadric(shape, center=[i * SPACING, 0, 0], rotation=euler), color))
     return scene
 
 

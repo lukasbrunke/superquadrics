@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from superquadrics.core import Superquadric
+from superquadrics.core import Superquadric, SuperquadricShape
 from superquadrics.plotting import (
     plot_quadric_open3d,
     plot_quadric_pyvista,
@@ -10,7 +10,7 @@ from superquadrics.plotting import (
 
 
 def _sq():
-    return Superquadric([0.0, 0.0, 0.0], [1.0, 1.5, 0.8], [0.6, 0.9])
+    return Superquadric(SuperquadricShape([1.0, 1.5, 0.8], [0.6, 0.9]), center=[0.0, 0.0, 0.0])
 
 
 def test_to_mesh_returns_world_mesh():
