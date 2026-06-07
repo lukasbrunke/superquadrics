@@ -112,9 +112,14 @@ class Superquadric:
         return np.dot(self.rotation, point) + self.center.reshape(-1, 1)
 
     def inside_outside_function(self, point):
-        """Inside-outside value F. F < 1 inside, F = 1 on surface, F > 1 outside."""
+        """Inside-outside value F. F < 1 inside, F = 1 on surface, F > 1 outside.
+
+        Accepts a single (3,) world point (returns a scalar) or a (3, N) array
+        of points (returns an (N,) array).
+        """
         local_point = self.transform_point_to_local(point)
-        normalized = local_point / self.scales
+        scales = self.scales.reshape(-1, 1) if local_point.ndim == 2 else self.scales
+        normalized = local_point / scales
         e1, e2 = self.exponents
         x, y, z = normalized
         term1 = (abs(x) ** (2 / e2) + abs(y) ** (2 / e2)) ** (e2 / e1)
@@ -122,11 +127,13 @@ class Superquadric:
         return term1 + term2
 
     def get_surface_points(self, n_points=20, scaling=None, n_v=None, n_u=None, mode="simple"):
-        """Return (x, y, z) grids of world-frame surface points.
+        """Return (x, y, z) grids of world-frame surface points, each shaped (n_v, n_u).
 
-        mode='simple' uses uniform angle sampling; mode='uniform' reparameterizes
-        by arc length for more even spacing. ``scaling`` inflates the surface
-        (used for the HOCBF scaled-superquadric construction).
+        ``n_u`` samples the u parameter in [-pi/2, pi/2]; ``n_v`` samples v in
+        [-pi, pi]; both default to ``n_points``. mode='simple' uses uniform angle
+        sampling; mode='uniform' reparameterizes by arc length for more even
+        spacing. ``scaling`` (if not None) inflates the surface by
+        ``scaling ** (e1/2)`` (used for the HOCBF scaled-superquadric construction).
         """
         e1, e2 = self.exponents
         a1, a2, a3 = self.scales
@@ -159,7 +166,7 @@ class Superquadric:
 
             # u sampling at v = 0 (xz-plane)
             x_u = a1 * sign_pow(np.cos(u_fine), e1)
-            y_u = a2 * sign_pow(np.cos(u_fine), e1) * sign_pow(np.sin(0.0), e2)
+            y_u = np.zeros_like(u_fine)  # v fixed at 0 -> y is identically zero along this curve
             z_u = a3 * sign_pow(np.sin(u_fine), e1)
             du = np.sqrt(np.diff(x_u) ** 2 + np.diff(y_u) ** 2 + np.diff(z_u) ** 2)
             u_arclen = np.insert(np.cumsum(du), 0, 0.0)
@@ -175,7 +182,7 @@ class Superquadric:
         else:
             raise ValueError(f"Invalid mode: {mode!r}")
 
-        if scaling:
+        if scaling is not None:
             scaling_factor = scaling ** (e1 / 2.0)
             x = x * scaling_factor
             y = y * scaling_factor

@@ -75,3 +75,26 @@ def test_surface_points_lie_on_surface():
     for (i, j) in [(7, 7), (12, 5), (5, 18), (18, 12)]:
         p = np.array([x[i, j], y[i, j], z[i, j]])
         assert sq.inside_outside_function(p) == pytest.approx(1.0, abs=1e-6)
+
+
+def test_inside_outside_batch_matches_single():
+    sq = Superquadric([0.5, -1.0, 2.0], [1.0, 1.5, 0.8], [0.6, 0.9],
+                      rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())
+    pts = np.array([[0.1, 0.2, 0.3], [1.0, -0.5, 0.4], [2.0, 2.0, 2.0]])  # (N, 3)
+    batch = sq.inside_outside_function(pts.T)                  # (3, N) -> (N,)
+    single = np.array([sq.inside_outside_function(p) for p in pts])
+    np.testing.assert_allclose(batch, single, rtol=1e-12, atol=1e-12)
+
+
+def test_surface_points_uniform_mode_on_surface():
+    sq = Superquadric([0.0, 0.0, 0.0], [1.0, 1.5, 0.8], [0.6, 0.9])
+    x, y, z = sq.get_surface_points(n_points=25, mode="uniform")
+    for (i, j) in [(7, 7), (12, 5), (5, 18), (18, 12)]:
+        p = np.array([x[i, j], y[i, j], z[i, j]])
+        assert sq.inside_outside_function(p) == pytest.approx(1.0, abs=1e-6)
+
+
+def test_get_surface_points_rejects_bad_mode():
+    sq = Superquadric([0, 0, 0], [1, 1, 1], [1, 1])
+    with pytest.raises(ValueError):
+        sq.get_surface_points(mode="bogus")
