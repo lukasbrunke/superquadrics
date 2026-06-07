@@ -33,8 +33,7 @@ superquadric_plotter(sq, plotter="open3d", opacity=0.5)  # transparency (both ba
 
 ## Examples
 
-`examples/visualize.py` renders a row of superquadrics (one per shape family,
-driven by the `exponents`) with both backends:
+`examples/visualize.py` renders a row of superquadrics (one per shape family, driven by the `exponents`) with both backends:
 
 ```bash
 pip install -e ".[examples]"
@@ -47,9 +46,7 @@ python examples/visualize.py --opacity 0.5 --out examples/images
 | <img src="examples/images/transparent_pyvista.png" width="360"> | <img src="examples/images/transparent_open3d.png" width="360"> |
 
 
-`examples/shape_chart.py` renders the classic shape chart, varying the exponents
-`e1` (rows) and `e2` (columns) from 0 to 2: cube at the origin, sphere at  
-`(1, 1)`, octahedron at `(2, 2)`:
+`examples/shape_chart.py` renders the classic shape chart, varying the exponents `e1` (rows) and `e2` (columns) from 0 to 2 with cube at the origin, sphere at  `(1, 1)`, octahedron at `(2, 2)`:
 
 ```bash
 python examples/shape_chart.py --out examples/images
