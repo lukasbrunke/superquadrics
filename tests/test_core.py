@@ -132,3 +132,30 @@ def test_gradient_equals_ellipsoid_when_exponents_one():
     P = _ellipsoid_PD(sq)
     expected = 2.0 * P @ (p - sq.center)   # grad of (p-c)^T P (p-c)
     np.testing.assert_allclose(sq.grad_inside_outside_wrt_point(p), expected, rtol=1e-6, atol=1e-9)
+
+
+def _fd_hessian(grad_func, p, eps=1e-6):
+    H = np.zeros((3, 3))
+    for i in range(3):
+        pp, pm = p.copy(), p.copy()
+        pp[i] += eps
+        pm[i] -= eps
+        H[:, i] = (grad_func(pp) - grad_func(pm)) / (2 * eps)
+    return 0.5 * (H + H.T)
+
+
+def test_hessian_matches_finite_differences():
+    sq = Superquadric([0.2, -0.4, 0.1], [1.0, 1.5, 0.8], [0.6, 0.9],
+                      rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())
+    p = np.array([0.7, -0.9, 1.3])
+    analytic = sq.hessian_inside_outside_wrt_point(p)
+    numeric = _fd_hessian(sq.grad_inside_outside_wrt_point, p)
+    np.testing.assert_allclose(analytic, numeric, rtol=1e-3, atol=1e-4)
+
+
+def test_hessian_equals_ellipsoid_when_exponents_one():
+    sq = Superquadric([0.2, -0.4, 0.1], [1.0, 1.5, 0.8], [1.0, 1.0],
+                      rotation=Rotation.from_euler("xyz", [0.2, 0.4, -0.3]).as_matrix())
+    p = np.array([0.7, -0.9, 1.3])
+    expected = 2.0 * _ellipsoid_PD(sq)   # Hessian of (p-c)^T P (p-c) is 2P (constant)
+    np.testing.assert_allclose(sq.hessian_inside_outside_wrt_point(p), expected, rtol=1e-6, atol=1e-9)

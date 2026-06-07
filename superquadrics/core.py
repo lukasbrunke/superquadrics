@@ -219,3 +219,42 @@ class Superquadric:
         dfdz = (2 / e1) * (1 / c) * (zs ** 2) ** (1 / e1) / zs
 
         return np.array(self.rotation @ np.array([dfdx, dfdy, dfdz]))
+
+    def hessian_inside_outside_wrt_point(self, point):
+        """Hessian of the inside-outside function w.r.t. the world point.
+
+        Note: undefined where a local coordinate is exactly zero (division by the
+        normalized coordinate), same limitation as the gradient.
+        """
+        local_point = self.transform_point_to_local(point)
+        e1, e2 = self.exponents
+        a, b, c = self.scales
+        x, y, z = local_point
+
+        xs = x / a
+        ys = y / b
+        zs = z / c
+
+        f2D = (xs ** 2) ** (1 / e2) + (ys ** 2) ** (1 / e2)
+        df2D_dx = 2 / e2 * (1 / a) * (xs ** 2) ** (1 / e2) / xs
+        df2D_dy = 2 / e2 * (1 / b) * (ys ** 2) ** (1 / e2) / ys
+
+        d2fdxdx = (
+            e2 / e1 * (e2 / e1 - 1) * f2D ** (e2 / e1 - 2) * df2D_dx ** 2
+            + (e2 / e1) * f2D ** (e2 / e1 - 1) * 2 / e2 * (1 / a ** 2)
+            * (2 / e2 - 1) * (xs ** 2) ** (1 / e2) / xs ** 2
+        )
+        d2fdxdy = e2 / e1 * (e2 / e1 - 1) * f2D ** (e2 / e1 - 2) * df2D_dx * df2D_dy
+        d2fdydy = (
+            e2 / e1 * (e2 / e1 - 1) * f2D ** (e2 / e1 - 2) * df2D_dy ** 2
+            + (e2 / e1) * f2D ** (e2 / e1 - 1) * 2 / e2 * (1 / b ** 2)
+            * (2 / e2 - 1) * (ys ** 2) ** (1 / e2) / ys ** 2
+        )
+        d2fdzdz = 1 / c ** 2 * 2 / e1 * (2 / e1 - 1) * (zs ** 2) ** (1 / e1) / zs ** 2
+
+        H_local = np.array([
+            [d2fdxdx, d2fdxdy, 0.0],
+            [d2fdxdy, d2fdydy, 0.0],
+            [0.0, 0.0, d2fdzdz],
+        ])
+        return self.rotation @ H_local @ self.rotation.T
