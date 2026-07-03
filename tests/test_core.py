@@ -42,6 +42,54 @@ def test_to_mesh_returns_world_frame_on_surface():
     np.testing.assert_allclose(values, 1.0, atol=1e-6)
 
 
+def _edge_face_counts(vertices, triangles):
+    # Faces per undirected edge, keyed by rounded coordinates so the duplicated
+    # seam/pole vertices collapse onto each other.
+    from collections import Counter
+
+    keys = [tuple(np.round(v, 9)) for v in vertices]
+    counts = Counter()
+    for tri in triangles:
+        k = [keys[i] for i in tri]
+        for a, b in ((0, 1), (1, 2), (2, 0)):
+            counts[frozenset((k[a], k[b]))] += 1
+    return counts
+
+
+def test_generate_render_mesh_watertight_without_degenerate_faces():
+    # Small exponents are the hard case: the pole/seam snapping collapses faces there.
+    sq = Superquadric(SuperquadricShape([0.5, 1.0, 1.0], [0.1, 0.1]))
+    vertices, normals, triangles = sq.generate_render_mesh(resolution=10)
+    assert vertices.shape == (100, 3)
+    assert normals.shape == (100, 3)
+    assert triangles.max() < vertices.shape[0]
+    for tri in triangles:
+        a, b, c = vertices[tri]
+        assert np.linalg.norm(np.cross(b - a, c - a)) >= 1e-12   # no degenerate face
+    # watertight: every (coordinate-keyed) edge borders exactly two faces
+    assert all(count == 2 for count in _edge_face_counts(vertices, triangles).values())
+
+
+def test_generate_render_mesh_normals_unit_outward_and_winding_consistent():
+    sq = Superquadric(SuperquadricShape([0.5, 1.0, 1.5], [0.4, 0.8]))
+    vertices, normals, triangles = sq.generate_render_mesh(resolution=12)
+    np.testing.assert_allclose(np.linalg.norm(normals, axis=1), 1.0, atol=1e-9)
+    # outward: positive dot with the radial direction (convex, origin-centred)
+    radial = vertices / np.linalg.norm(vertices, axis=1, keepdims=True)
+    assert np.min(np.sum(normals * radial, axis=1)) > 0.0
+    # face winding agrees with the vertex normals (CCW seen from outside)
+    for tri in triangles:
+        a, b, c = vertices[tri]
+        assert np.dot(np.cross(b - a, c - a), normals[tri].mean(axis=0)) > 0.0
+
+
+def test_generate_render_mesh_sphere_normals_are_radial():
+    sq = Superquadric(SuperquadricShape([1.0, 1.0, 1.0], [1.0, 1.0]))
+    vertices, normals, _ = sq.generate_render_mesh(resolution=12)
+    radial = vertices / np.linalg.norm(vertices, axis=1, keepdims=True)
+    np.testing.assert_allclose(normals, radial, atol=1e-9)
+
+
 def test_init_accepts_three_rotation_formats():
     eye = np.eye(3)
     sq_mat = Superquadric(SuperquadricShape([1, 1, 1], [1, 1]), center=[0, 0, 0], rotation=eye)
