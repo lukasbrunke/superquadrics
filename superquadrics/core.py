@@ -61,6 +61,33 @@ def _surface_xyz(scales, exponents, eta, omega):
     return x, y, z
 
 
+def _surface_normals(scales, exponents, eta, omega):
+    """Unit outward surface normals for parameter arrays ``eta`` and ``omega``,
+    with the same pole/seam-safe snapping as :func:`_surface_xyz`.
+
+    The analytic normal of the superquadric surface is::
+
+        n ∝ [ sign_pow(cos eta, 2-e1) * sign_pow(cos omega, 2-e2) / a1,
+              sign_pow(cos eta, 2-e1) * sign_pow(sin omega, 2-e2) / a2,
+              sign_pow(sin eta, 2-e1) / a3 ]
+
+    which stays well-defined everywhere, including the poles and seam where the
+    *triangulation* of the surface degenerates. Returns (nx, ny, nz) unit-normal
+    component arrays shaped like the inputs.
+    """
+    a1, a2, a3 = scales
+    e1, e2 = exponents
+    cos_eta = _snap_zero(np.cos(eta))
+    sin_eta = _snap_zero(np.sin(eta))
+    cos_omega = _snap_zero(np.cos(omega))
+    sin_omega = _snap_zero(np.sin(omega))
+    nx = sign_pow(cos_eta, 2.0 - e1) * sign_pow(cos_omega, 2.0 - e2) / a1
+    ny = sign_pow(cos_eta, 2.0 - e1) * sign_pow(sin_omega, 2.0 - e2) / a2
+    nz = sign_pow(sin_eta, 2.0 - e1) / a3
+    norm = np.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+    return nx / norm, ny / norm, nz / norm
+
+
 def _clamp_off_axis(t):
     """Sign-preserving clamp of a normalized coordinate away from 0 by ``_AXIS_EPS``."""
     if abs(t) < _AXIS_EPS:
@@ -314,6 +341,53 @@ class Superquadric:
                 triangles.append([v1, v2, v3])
 
         return np.asarray(vertices, dtype=float), np.asarray(triangles, dtype=np.int64)
+
+    def generate_render_mesh(self, resolution=20):
+        """Watertight local-frame triangle mesh with per-vertex analytic normals.
+
+        Rendering-oriented variant of :meth:`generate_mesh`: the zero-area faces
+        that the pole/seam snapping collapses are dropped (the surviving triangles
+        close each pole with a fan, so the surface stays watertight), and every
+        vertex carries the analytic outward surface normal — which stays
+        well-defined at the poles, where a face normal computed from a collapsed
+        triangle would be meaningless. Faces are wound counter-clockwise seen from
+        outside, so renderers that cull back faces show the outside of the surface.
+
+        Returns
+        -------
+        vertices : np.ndarray
+            ``(resolution**2, 3)`` local-frame vertices.
+        normals : np.ndarray
+            ``(resolution**2, 3)`` unit outward normals, one per vertex.
+        triangles : np.ndarray
+            ``(n_faces, 3)`` vertex-index triples, ``n_faces <=
+            2 * (resolution - 1)**2`` after the collapsed faces are removed.
+        """
+        eta = np.linspace(-np.pi / 2, np.pi / 2, resolution)
+        omega = np.linspace(-np.pi, np.pi, resolution)
+        eta, omega = np.meshgrid(eta, omega)
+
+        x, y, z = _surface_xyz(self.scales, self.exponents, eta, omega)
+        nx, ny, nz = _surface_normals(self.scales, self.exponents, eta, omega)
+        vertices = np.stack([x.ravel(), y.ravel(), z.ravel()], axis=1)
+        normals = np.stack([nx.ravel(), ny.ravel(), nz.ravel()], axis=1)
+
+        triangles = []
+        for i in range(resolution - 1):
+            for j in range(resolution - 1):
+                v0 = i * resolution + j
+                v1 = i * resolution + (j + 1)
+                v2 = (i + 1) * resolution + j
+                v3 = (i + 1) * resolution + (j + 1)
+                # Wind so face normals point outward (right-hand rule), like
+                # generate_mesh, and skip the faces collapsed by the snapping.
+                for tri in ([v0, v2, v1], [v1, v2, v3]):
+                    a, b, c = vertices[tri[0]], vertices[tri[1]], vertices[tri[2]]
+                    if np.linalg.norm(np.cross(b - a, c - a)) < 1e-12:
+                        continue
+                    triangles.append(tri)
+
+        return vertices, normals, np.asarray(triangles, dtype=np.int64)
 
     def to_mesh(self, resolution=20):
         """Triangle mesh of this superquadric in world coordinates.

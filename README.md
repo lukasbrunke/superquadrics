@@ -27,6 +27,8 @@ print(sq.inside_outside_function(np.array([0.5, 0.0, 0.0])))  # <1 inside, >1 ou
 g = sq.grad_inside_outside_wrt_point(np.array([0.7, -0.9, 1.3]))
 H = sq.hessian_inside_outside_wrt_point(np.array([0.7, -0.9, 1.3]))
 
+verts, normals, tris = sq.generate_render_mesh(resolution=20)  # watertight mesh + vertex normals
+
 superquadric_plotter(sq, plotter="pyvista")              # or plotter="open3d"
 superquadric_plotter(sq, plotter="open3d", opacity=0.5)  # transparency (both backends)
 ```
